@@ -1,0 +1,154 @@
+# sistema_alquiler.py
+# Simulación simple de un sistema de alquiler de vehículos
+# Uso: ejecutar este archivo para ver un ejemplo básico
+
+from typing import Dict, Optional
+
+
+class Vehiculo:
+    """
+    Clase base para vehículos.
+    Atributos:
+        marca, modelo, placa
+    Método:
+        mostrarInformacion: puede ser personalizado por clases derivadas.
+    """
+    def __init__(self, marca: str, modelo: str, placa: str) -> None:
+        self.marca = marca
+        self.modelo = modelo
+        self.placa = placa
+        self._alquilado = False
+
+    def mostrarInformacion(self) -> str:
+        estado = "Alquilado" if self._alquilado else "Disponible"
+        return f"{self.__class__.__name__} - Marca: {self.marca}, Modelo: {self.modelo}, Placa: {self.placa}, Estado: {estado}"
+
+    def esta_alquilado(self) -> bool:
+        return self._alquilado
+
+    def marcar_alquilado(self) -> None:
+        self._alquilado = True
+
+    def marcar_disponible(self) -> None:
+        self._alquilado = False
+
+
+class Auto(Vehiculo):
+    """
+    Auto: vehículo motorizado con capacidad de pasajeros.
+    Atributo adicional:
+        capacidad_pasajeros: int
+    """
+    def __init__(self, marca: str, modelo: str, placa: str, capacidad_pasajeros: int) -> None:
+        super().__init__(marca, modelo, placa)
+        self.capacidad_pasajeros = capacidad_pasajeros
+
+    def mostrarInformacion(self) -> str:
+        base = super().mostrarInformacion()
+        return f"{base}, Capacidad pasajeros: {self.capacidad_pasajeros}"
+
+
+class Bicicleta(Vehiculo):
+    """
+    Bicicleta: vehículo no motorizado.
+    Atributos adicionales:
+        tipo: str (urbana, montaña, ruta, etc.)
+        numero_marchas: Optional[int]
+    """
+    def __init__(self, marca: str, modelo: str, placa: str, tipo: str, numero_marchas: Optional[int] = None) -> None:
+        super().__init__(marca, modelo, placa)
+        self.tipo = tipo
+        self.numero_marchas = numero_marchas
+
+    def mostrarInformacion(self) -> str:
+        base = super().mostrarInformacion()
+        marchas = f", Marchas: {self.numero_marchas}" if self.numero_marchas is not None else ""
+        return f"{base}, Tipo: {self.tipo}{marchas}"
+
+
+class SistemaAlquiler:
+    """
+    Sistema de alquiler que permite:
+      - Registrar vehículos
+      - Alquilar y devolver vehículos
+      - Mostrar vehículos disponibles
+    Se indexa por placa (suponiendo que es única).
+    """
+    def __init__(self) -> None:
+        self._vehiculos: Dict[str, Vehiculo] = {}
+
+    def registrar_vehiculo(self, vehiculo: Vehiculo) -> None:
+        if vehiculo.placa in self._vehiculos:
+            raise ValueError(f"La placa '{vehiculo.placa}' ya está registrada.")
+        self._vehiculos[vehiculo.placa] = vehiculo
+
+    def alquilar_vehiculo(self, placa: str) -> None:
+        if placa not in self._vehiculos:
+            raise KeyError(f"No existe vehículo con placa '{placa}'.")
+        veh = self._vehiculos[placa]
+        if veh.esta_alquilado():
+            raise RuntimeError(f"El vehículo con placa '{placa}' ya está alquilado.")
+        veh.marcar_alquilado()
+
+    def devolver_vehiculo(self, placa: str) -> None:
+        if placa not in self._vehiculos:
+            raise KeyError(f"No existe vehículo con placa '{placa}'.")
+        veh = self._vehiculos[placa]
+        if not veh.esta_alquilado():
+            raise RuntimeError(f"El vehículo con placa '{placa}' no está alquilado.")
+        veh.marcar_disponible()
+
+    def obtener_vehiculo(self, placa: str) -> Vehiculo:
+        if placa not in self._vehiculos:
+            raise KeyError(f"No existe vehículo con placa '{placa}'.")
+        return self._vehiculos[placa]
+
+    def mostrar_disponibles(self) -> str:
+        disponibles = [v.mostrarInformacion() for v in self._vehiculos.values() if not v.esta_alquilado()]
+        if not disponibles:
+            return "No hay vehículos disponibles."
+        return "\n".join(disponibles)
+
+    def mostrar_todos(self) -> str:
+        if not self._vehiculos:
+            return "No hay vehículos registrados."
+        return "\n".join(v.mostrarInformacion() for v in self._vehiculos.values())
+
+
+# Ejemplo de uso
+if __name__ == "__main__":
+    sistema = SistemaAlquiler()
+
+    # Registrar vehículos
+    a1 = Auto("Toyota", "Corolla", "ABC123", capacidad_pasajeros=5)
+    a2 = Auto("Ford", "Fiesta", "DEF456", capacidad_pasajeros=4)
+    b1 = Bicicleta("Trek", "Marlin", "BIK001", tipo="Montaña", numero_marchas=21)
+    b2 = Bicicleta("Giant", "Escape", "BIK002", tipo="Urbana")
+
+    for v in (a1, a2, b1, b2):
+        sistema.registrar_vehiculo(v)
+
+    print("Todos los vehículos registrados:")
+    print(sistema.mostrar_todos())
+    print("\nVehículos disponibles inicialmente:")
+    print(sistema.mostrar_disponibles())
+
+    # Alquilar un auto y una bicicleta
+    sistema.alquilar_vehiculo("ABC123")
+    sistema.alquilar_vehiculo("BIK001")
+
+    print("\nDespués de alquilar ABC123 y BIK001:")
+    print("Disponibles:")
+    print(sistema.mostrar_disponibles())
+
+    # Intentar devolver
+    sistema.devolver_vehiculo("ABC123")
+    print("\nDespués de devolver ABC123:")
+    print(sistema.mostrar_disponibles())
+
+    # Manejo de errores (ejemplos)
+    try:
+        sistema.alquilar_vehiculo("ABC123")  # OK, ahora disponible de nuevo
+        sistema.alquilar_vehiculo("ABC123")  # Error: ya está alquilado
+    except Exception as e:
+        print(f"\nError: {e}")
